@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -189,3 +189,68 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(), count)
         for product in found:
             self.assertEqual(product.category, category)
+
+    def test_deserialize_missing_name(self):
+        """It should raise DataValidationError for missing name"""
+        data = {
+            "description": "Test product",
+            "price": "10.99",
+            "available": True,
+            "category": "CLOTHS"
+        }
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    def test_deserialize_invalid_available_type(self):
+        """It should raise DataValidationError for bad available type"""
+        data = {
+            "name": "Test",
+            "description": "Bad Bool",
+            "price": "9.99",
+            "available": "yes",  # invalid
+            "category": "FOOD"
+        }
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    def test_deserialize_invalid_category(self):
+        """It should raise DataValidationError for bad category"""
+        data = {
+            "name": "Test",
+            "description": "Bad Category",
+            "price": "9.99",
+            "available": True,
+            "category": "INVALID"  # not in enum
+        }
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    def test_deserialize_invalid_category(self):
+        """It should raise DataValidationError for bad category"""
+        data = {
+            "name": "Test",
+            "description": "Bad Category",
+            "price": "9.99",
+            "available": True,
+            "category": "INVALID"  # not in enum
+        }
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(data)
+
+    def test_find_by_price_string_input(self):
+        """It should find products by price using string input"""
+        product = ProductFactory(price=Decimal("19.99"))
+        product.create()
+        found = Product.find_by_price("19.99")
+        self.assertGreaterEqual(found.count(), 1)
+        for p in found:
+            self.assertEqual(p.price, Decimal("19.99"))
+
+    def test_repr(self):
+        """It should return string representation of Product"""
+        product = ProductFactory(name="Lamp")
+        self.assertIn("Lamp", repr(product))
